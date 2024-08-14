@@ -1,0 +1,235 @@
+TRAIN:
+  MANUAL_SEED: 1
+  CONV_REPEATABLE: true
+  BATCH_SIZE: 8
+  EPOCH: 10
+  OPTIMIZER: adam
+  LR: 0.0001
+  SCHEDULER: StepLR
+  LR_DECAY_GAMMA: 0.1
+  LR_DECAY_STEP:
+  - 7
+  LOG_INTERVAL: 10
+  FIND_UNUSED_PARAMETERS: false
+  GRAD_CLIP_ENABLED: true
+  GRAD_CLIP:
+    TYPE: 2
+    NORM: 1.0
+  WEIGHT_DECAY: 0.0
+
+DATASET:
+  TRAIN:
+    TYPE: MixWebDataset
+    DATASET_LIST: ["HO3D", "DexYCB", "Arctic", "Interhand", "Oakink", "Freihand"]
+    EPOCH_SIZE: 210_000
+    HO3D:
+      MIX_RATIO: 0.18
+      URLS: "data/dataset_tars/HO3D_mv/HO3D_mv_train-{000000..000008}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [1, 5]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: true
+        CENTER_JIT: 0.05
+        SCALE_JIT: 0.06
+        ROT_JIT: 5
+        COLOR_JIT: 0.3
+        ROT_PROB: 0.5
+        OCCLUSION: false
+        OCCLUSION_PROB: 0.2
+
+    DexYCB:
+      MIX_RATIO: 0.18
+      URLS: "data/dataset_tars/DexYCB_mv/DexYCB_mv_train-{000000..000019}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [1, 8]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: true
+        CENTER_JIT: 0.05
+        SCALE_JIT: 0.06
+        ROT_JIT: 5
+        COLOR_JIT: 0.3
+        ROT_PROB: 0.5
+        OCCLUSION: false
+        OCCLUSION_PROB: 0.2
+
+    Arctic:
+      MIX_RATIO: 0.18
+      URLS: "data/dataset_tars/Arctic_mv/Arctic_mv_train_p1-{000000..000360}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [1, 8]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: true
+        CENTER_JIT: 0.05
+        SCALE_JIT: 0.06
+        ROT_JIT: 5
+        COLOR_JIT: 0.3
+        ROT_PROB: 0.5
+        OCCLUSION: false
+        OCCLUSION_PROB: 0.2
+
+    Interhand:
+      MIX_RATIO: 0.18
+      URLS: "data/dataset_tars/Interhand_mv/Interhand_mv_train-{000000..000075}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [1, 8]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: true
+        CENTER_JIT: 0.05
+        SCALE_JIT: 0.06
+        ROT_JIT: 5
+        COLOR_JIT: 0.3
+        ROT_PROB: 0.5
+        OCCLUSION: false
+        OCCLUSION_PROB: 0.2
+
+    Oakink:
+      MIX_RATIO: 0.18
+      URLS: "data/dataset_tars/Oakink_mv/Oakink_mv_train+val-{000000..000103}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [1, 4]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: true
+        CENTER_JIT: 0.05
+        SCALE_JIT: 0.06
+        ROT_JIT: 5
+        COLOR_JIT: 0.3
+        ROT_PROB: 0.5
+        OCCLUSION: false
+        OCCLUSION_PROB: 0.2
+
+    Freihand:
+      MIX_RATIO: 0.1
+      URLS: "data/dataset_tars/Freihand_mv/Freihand_mv_train-{000000..000004}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [1, 1]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: true
+        CENTER_JIT: 0.05
+        SCALE_JIT: 0.06
+        ROT_JIT: 5
+        COLOR_JIT: 0.3
+        ROT_PROB: 0.5
+        OCCLUSION: false
+        OCCLUSION_PROB: 0.2
+
+  TEST:
+    TYPE: MixWebDataset
+    FIND_UNUSED_PARAMETERS: true
+    DATASET_LIST: ["Interhand", "DexYCB", "Arctic"]
+    EPOCH_SIZE: 5000
+    Interhand:
+      MIX_RATIO: 0.25
+      URLS: "data/dataset_tars/Interhand_mv/Interhand_mv_val-{000000..000022}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [2, 5]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: false
+
+    DexYCB:
+      MIX_RATIO: 0.25
+      URLS: "data/dataset_tars/DexYCB_mv/DexYCB_mv_test-{000000..000003}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [2, 8]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: false
+
+    Arctic:
+      MIX_RATIO: 0.5
+      URLS: "data/dataset_tars/Arctic_mv/Arctic_mv_val_p1-{000000..000045}.tar"
+      DATA_SPLIT: train
+      RANDOM_N_VIEWS: true
+      VIEW_RANGE: [2, 8]
+      TRANSFORM:
+        TYPE: SimpleTransform3DMultiView
+        AUG: false
+
+DATA_PRESET:
+  USE_CACHE: true
+  BBOX_EXPAND_RATIO: 2.0
+  IMAGE_SIZE:
+  - 256
+  - 256
+  CENTER_IDX: 0
+  NUM_JOINTS: 21
+  NUM_VERTS: 778
+  WITH_HEATMAP: true
+  HEATMAP_SIZE:
+  - 32
+  - 32
+  HEATMAP_SIGMA: 2.0
+  WITH_MASK: false
+MODEL:
+  TYPE: PtEmbedMultiviewStereoV2
+  PRETRAINED: null
+  VERTICES_INIT_MODE: linear_inv_skinning
+  BACKBONE:
+    TYPE: HRNet
+    PRETRAINED: "checkpoints/hrnetv2_w40_imagenet_pretrained.pth"
+    FREEZE_BATCHNORM: true
+  HEAD:
+    TYPE: POEM_Generalized_Head
+    TRANSFORMER:
+      TYPE: PtEmbedTRv4
+      N_BLOCKS: 3 # Aligned with NUM_PREDS
+      INPUT_FEAT_DIM: 256
+      NUM_HIDDEN_LAYERS: 4
+      NUM_ATTENTION_HEADS: 4
+      DROPOUT: 0.1 # Set according to bert_cfg.json
+      BPS_FEAT_DIM: 4096 # Must be the same as NSAMPLE
+      N_NEIGHBOR: 32
+      N_NEIGHBOR_QUERY: 32
+    POSITIONAL_ENCODING:
+      TYPE: SinePositionalEncoding3D
+      NUM_FEATS: 128
+      NORMALIZE: true
+    
+    WITH_POSITION: true
+    WITH_MULTIVIEW: true
+    NUM_QUERY: 799
+    NUM_PREDS: 3 
+    NUM_REG_FCS: 2
+    DEPTH_NUM: 32
+    POSITION_RANGE:
+    - -0.6
+    - -0.6
+    - 0.0
+    - 0.6
+    - 0.6
+    - 1.2
+    LID: false
+    DEPTH_START: 0.0
+    DEPTH_END: 1.2
+    POINTS_FEAT_DIM: 256
+    EMBED_DIMS: 256
+    IN_CHANNELS: 160 # The first dimension of original mlvl features ([BN, 128, 32, 32] originally). Modified according to different backbones
+    CENTER_SHIFT: true
+    N_SAMPLE: 4096
+    RADIUS_SAMPLE: 0.1 # radius set to 0.1
+    CAM_FEAT_MERGE: attn
+    QUERY_TYPE: KPT
+  LOSS:
+    JOINTS_LOSS_TYPE: l2
+    VERTICES_LOSS_TYPE: l1
+    HEATMAP_JOINTS_WEIGHT: 10.0
+    TRIANGULATED_JOINTS_WEIGHT: 10.0
+    JOINTS_LOSS_WEIGHT: 1.0
+    VERTICES_LOSS_WEIGHT: 1.0
+    JOINTS_2D_LOSS_WEIGHT: 1.0
+    VERTICES_2D_LOSS_WEIGHT: 0.0
+    EDGE_LOSS_WEIGHT: 0.0
