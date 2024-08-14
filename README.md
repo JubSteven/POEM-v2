@@ -46,7 +46,7 @@ POEM is a generalizable multi-view hand mesh reconstruction (HMR) model designed
 
 We provide five models with different configurations for training and evaluation. We have evaluated the models on multiple datasets.
 
-- set `${MODEL}` as one in `[small, medium, medium_MANO, large, huge]`.
+- set `${MODEL}` as one in `[small, medium, medium_MANO, large]`.
 - set `${DATASET}` as one in `[HO3D, DexYCB, Arctic, Interhand, Oakink, Freihand]`.
 
 Download the pretrained checkpoints at [:link: ckpt_release](https://drive.google.com/drive/folders/16BRH8zJ7fbR7QNluHHEshZMJc1wMRr_k?usp=drive_link) and move the contents to `./checkpoints`.
