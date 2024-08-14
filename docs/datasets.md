@@ -9,7 +9,7 @@ The following datasets are used for training.
 - [Oakink](https://oakink.net/)
 - [FreiHand](https://github.com/lmb-freiburg/freihand)
 
-We have used [webdataset](https://github.com/webdataset/webdataset) to pack the datasets into shards for efficient training. In training POEM, we have also filtered samples with left hand only. 
+We have used [webdataset](https://github.com/webdataset/webdataset) to pack the datasets into shards for efficient training. In training POEM, we have also filtered  samples with right hand only. 
 
 The packed dataset tars used for training and evaluation will be released soon.
 
