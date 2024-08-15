@@ -11,7 +11,22 @@ The following datasets are used for training.
 
 We have used [webdataset](https://github.com/webdataset/webdataset) to pack the datasets into shards for efficient training. In training POEM, we have also filtered  samples with right hand only. 
 
-The packed dataset tars used for training and evaluation will be released soon.
+The packed dataset tars used for training and evaluation is released [here](https://huggingface.co/datasets/JubSteven/POEM-v2/tree/main). After downloading the dataset, create a directory `data` in the root directory and organize the files as follows:
+
+```
+├── assets
+├── config
+├── data
+│   ├── dataset_tars
+│       ├── Oakink_mv
+│       ├── HO3D_mv
+│       ├── HO3D_mv_test
+│       ├── ...
+│       └── Arctic_mv
+├── exp
+├── lib
+├── ...
+```
 
 &nbsp;
 

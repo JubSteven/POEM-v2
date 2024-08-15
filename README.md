@@ -70,8 +70,8 @@ $ python scripts/eval_single.py --cfg config/release/eval_single.yaml
                                 -g ${gpu_id}
                                 --reload ${PATH_TO_CKPT}
                                 --dataset ${DATASET}
-                                --view_min {MIN_VIEW}
-                                --view_max {MAX_VIEW}
+                                --view_min ${MIN_VIEW}
+                                --view_max ${MAX_VIEW}
                                 --model ${MODEL}
 ```
 
