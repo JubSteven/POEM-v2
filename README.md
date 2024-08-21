@@ -25,7 +25,7 @@
   <p align="center">
     <br>
     <a href="">
-      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'>
+      <img src='https://arxiv.org/abs/2408.10581' alt='Paper PDF'>
     </a>
   </p>
 </p>
@@ -105,7 +105,15 @@ This code and model are available for non-commercial scientific research purpose
 ## Citation
 
 ```bibtex
-TODO
+@misc{yang2024multiviewhandreconstructionpointembedded,
+      title={Multi-view Hand Reconstruction with a Point-Embedded Transformer}, 
+      author={Lixin Yang and Licheng Zhong and Pengxiang Zhu and Xinyu Zhan and Junxiao Kong and Jian Xu and Cewu Lu},
+      year={2024},
+      eprint={2408.10581},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2408.10581}, 
+}
 ```
 
 For more questions, please contact Lixin Yang: siriusyang@sjtu.edu.cn
