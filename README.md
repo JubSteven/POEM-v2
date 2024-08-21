@@ -24,8 +24,8 @@
 
   <p align="center">
     <br>
-    <a href="">
-      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' href="https://arxiv.org/abs/2408.10581" alt='Paper PDF'>
+    <a href="https://arxiv.org/abs/2408.10581">
+      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'>
     </a>
   </p>
 </p>
