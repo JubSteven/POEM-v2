@@ -225,7 +225,7 @@ class POEM_PositionEmbeddedAggregationHead(BasePointEmbedHead):
         batch_size, num_cams = x.size(0), x.size(1)
 
         inp_img_w, inp_img_h = img_metas["inp_img_shape"]  #  (256, 256)
-        ref_mesh_gt = img_metas["ref_mesh_gt"]
+        # ref_mesh_gt = img_metas["ref_mesh_gt"]
         inp_res = torch.Tensor([inp_img_w, inp_img_h]).to(x.device).float()
         masks = x.new_zeros((batch_size, num_cams, inp_img_h, inp_img_w))
         x = self.input_proj(x.flatten(0, 1))
