@@ -5,6 +5,7 @@ import open3d as o3d
 import torch
 from lib.datasets.dexycb import DexYCBMultiView
 from lib.datasets.ho3d import HO3Dv3MultiView
+from lib.datasets.ho3dmv_test import HO3Dv3MultiViewTest
 from lib.datasets.oakink import OakInkMultiView
 from lib.datasets.interhand import InterHandMultiView
 from lib.datasets.arctic import ArcticMultiView
@@ -25,7 +26,7 @@ DEXYCB_3D_CONFIG = dict(
     SETUP="s0",
     USE_LEFT_HAND=False,
     FILTER_INVISIBLE_HAND=True,
-    RANDOM_N_VIEWS = False,
+    RANDOM_N_VIEWS=False,
     MASTER_SYSTEM="as_constant_camera",
     TRANSFORM=dict(
         TYPE="SimpleTransform3DMultiView",
@@ -48,14 +49,15 @@ DEXYCB_3D_CONFIG = dict(
 HO3D_3D_CONFIG = dict(
     DATA_MODE="3D",
     DATA_ROOT="data",
-    DATA_SPLIT="train",
+    DATA_SPLIT="test",
     CONST_CAM_ID=2,
     N_VIEWS=5,
+    RANDOM_N_VIEWS=False,
     USE_GT_FROM_MULTIVIEW=True,
     SPLIT_MODE="paper",
     ADD_EVALSET_TRAIN=True,
     FILTER_INVISIBLE_HAND=True,
-    MASTER_SYSTEM="as_constant_camera",
+    MASTER_SYSTEM="as_first_camera",
     TRANSFORM=dict(
         TYPE="SimpleTransform3DMultiView",
         AUG=True,
@@ -108,7 +110,7 @@ INTERHAND_MV_CONFIG = dict(
     DATA_SPLIT="train",
     SKIP_FRAMES=3,
     N_VIEWS=8,
-    RANDOM_N_VIEWS = True,
+    RANDOM_N_VIEWS=True,
     MIN_VIEWS=8,
     MASTER_SYSTEM="as_first_camera",
     USE_LEFT_HAND=False,
@@ -136,7 +138,7 @@ ARCTIC_MV_CONFIG = dict(
     DATA_MODE="3D",
     DATA_ROOT="data",
     DATA_SPLIT="train",
-    SETUP = "p1",
+    SETUP="p1",
     SKIP_FRAMES=0,
     RANDOM_N_VIEWS=False,
     N_VIEWS=8,
@@ -239,6 +241,9 @@ def main(args):
     elif args.dataset == "ho3d":
         cfg = CN(HO3D_3D_CONFIG)
         dataset = HO3Dv3MultiView(cfg)
+    elif args.dataset == "ho3d_test":
+        cfg = CN(HO3D_3D_CONFIG)
+        dataset = HO3Dv3MultiViewTest(cfg)
     elif args.dataset == "oakink":
         cfg = CN(OAKINK_3D_CONFIG)
         dataset = OakInkMultiView(cfg)
@@ -267,7 +272,6 @@ def main(args):
     for i in range(len(dataset)):
         i = np.random.randint(len(dataset))
         sample = dataset[i]
-
         master_id = sample["master_id"]
 
         master_joints_3d = sample["master_joints_3d"]
@@ -421,7 +425,11 @@ def main(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", type=str, default="dexycb", choices=["dexycb", "ho3d", "oakink", "interhand", "arctic"])
+    parser.add_argument("-d",
+                        "--dataset",
+                        type=str,
+                        default="dexycb",
+                        choices=["dexycb", "ho3d", "oakink", "interhand", "arctic", "ho3d_test"])
     parser.add_argument("-ms",
                         "--master_system",
                         type=str,
