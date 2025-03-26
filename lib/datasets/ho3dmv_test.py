@@ -24,19 +24,19 @@ from ..utils.logger import logger
 from ..utils.transform import (SE3_transform, aa_to_rotmat, batch_ref_bone_len, cal_transform_mean, denormalize,
                                get_annot_center, get_annot_scale, persp_project, rotmat_to_aa)
 from .hdata import HDataset, kpId2vertices
-from .ho3d import HO3Dv3MultiView, HO3D
+from .ho3d import HO3DMultiView, HO3D
 
 
-class HO3D_Test(HO3D):
+class HO3DOfficialTest(HO3D):
 
     def __init__(self, cfg):
         super().__init__(cfg)
 
         assert self.data_split == "test"
 
-        with open(os.path.join(self.data_root, "HO3D_v3_official_gt/evaluation_xyz.json"), "r") as f:
+        with open(os.path.join(self.data_root, f"HO3D_{self.version}_official_gt/evaluation_xyz.json"), "r") as f:
             evaluation_xyz = json.load(f)
-        with open(os.path.join(self.data_root, "HO3D_v3_official_gt/evaluation_verts.json"), "r") as f:
+        with open(os.path.join(self.data_root, f"HO3D_{self.version}_official_gt/evaluation_verts.json"), "r") as f:
             evaluation_verts = json.load(f)
 
         self.evaluation_xyz = np.array(evaluation_xyz, dtype=np.float32)
@@ -57,11 +57,12 @@ class HO3D_Test(HO3D):
 
 
 @DATASET.register_module()
-class HO3Dv3MultiViewTest(HO3Dv3MultiView):
+class HO3DOfficialTestMultiView(HO3DMultiView):
 
     def __init__(self, cfg):
         self.name = type(self).__name__
         self.cfg = cfg
+        self.version = cfg.get("VERSION", "v3")
         self.n_views = cfg.N_VIEWS
         self.data_split = cfg.DATA_SPLIT
         assert self.data_split == "test", f"{self.name} only support test data split"
@@ -72,7 +73,6 @@ class HO3Dv3MultiViewTest(HO3Dv3MultiView):
         self.n_views_kept = cfg.get("N_VIEWS_KEPT", self.n_views)
         self.filter_keys = cfg.get("FILTER_KEYS", False)
         assert self.n_views_kept <= self.n_views, f"n_views_kept must be less than or equal to n_views"
-        assert self.data_split in ["train", "val", "test"], f"{self.name} unsupport data split {self.data_split}"
 
         self.master_system = cfg.MASTER_SYSTEM
         assert self.master_system in ["as_constant_camera", "as_first_camera"], \
@@ -87,10 +87,6 @@ class HO3Dv3MultiViewTest(HO3Dv3MultiView):
 
         self.set_mappings = {f"{cfg.SPLIT_MODE}_train": None, f"{cfg.SPLIT_MODE}_test": _testset}
         self.root = _testset.root
-        if self.data_split == "train":
-            assert False
-        elif self.data_split == "test":
-            pass
 
         # 10: side_view_facing_whiteboard
         # 11: top_view_facing_desk
@@ -109,7 +105,7 @@ class HO3Dv3MultiViewTest(HO3Dv3MultiView):
         self.multiview_sample_idxs = []
         self.multiview_sample_infos = []
 
-        if self.split_mode in ['paper', 'v2', 'v3']:  # full view mode
+        if self.split_mode == 'paper':  # full view mode
             info_path_eval = os.path.join(self.root, "evaluation.txt")
             with open(info_path_eval, "r") as f:
                 lines = f.readlines()
@@ -121,12 +117,13 @@ class HO3Dv3MultiViewTest(HO3Dv3MultiView):
             raise ValueError(f"{self.split_mode} is not supported")
 
         logger.warning(
-            f"{self.name} {self.split_mode}_{self.data_split} Init Done. {len(self.multiview_sample_idxs)} samples")
+            f"{self.name}_{self.version}_{self.data_split} Init Done. {len(self.multiview_sample_idxs)} samples")
 
     def _single_view_ho3d(self):
         cfg_test = dict(
             TYPE="HO3D",
             DATA_SPLIT="test",
+            VERSION=self.version,
             DATA_MODE=self.data_mode,
             SPLIT_MODE=self.split_mode,
             DATA_ROOT=self.cfg.DATA_ROOT,
@@ -137,7 +134,7 @@ class HO3Dv3MultiViewTest(HO3Dv3MultiView):
         cfg_test["DATA_SPLIT"] = "test"
         cfg_test["USE_GT_FROM_MULTIVIEW"] = False
 
-        ho3d_test = HO3D_Test(CN(cfg_test))
+        ho3d_test = HO3DOfficialTest(CN(cfg_test))
 
         return None, ho3d_test
 
@@ -187,16 +184,20 @@ class HO3Dv3MultiViewTest(HO3Dv3MultiView):
 
         if multiview_info_list[0]["cam_id"] is not None:
             extr_mapping = {}
+            calib_root = self.root
+            if self.version == "v2":
+                calib_root = calib_root.replace("v2", "v3")
             for cam_id in range(self.n_views):
                 # cam_id = int(multiview_info_list[i]["cam_id"])
-                extr_seq_dir = os.path.join(self.root, "calibration", seq_name_main, "calibration",
+                extr_seq_dir = os.path.join(calib_root, "calibration", seq_name_main, "calibration",
                                             f"trans_{cam_id}.txt")
                 with open(extr_seq_dir) as f:
                     extr = np.loadtxt(f, dtype=np.float32)
                 extr_mapping[cam_id] = extr
 
             # get true cam_id, the cam_id above just for convenient index
-            true_cam_order_dir = os.path.join(self.root, "calibration", seq_name_main, "calibration", "cam_orders.txt")
+
+            true_cam_order_dir = os.path.join(calib_root, "calibration", seq_name_main, "calibration", "cam_orders.txt")
             true_cam_orders = [int(float(number)) for line in open(true_cam_order_dir, 'r') for number in line.split()]
 
         sample = dict()

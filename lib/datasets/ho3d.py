@@ -33,6 +33,7 @@ class HO3D(HDataset):
         super().__init__(cfg)
 
         self.mini_factor_of_dataset = float(cfg.get("MINI_FACTOR", 1.0))
+        self.version = cfg.get("VERSION", "v3")
 
         self.use_gt_from_multiview = cfg.get("USE_GT_FROM_MULTIVIEW", False)
         self.use_test_gt_root = os.path.join(self.data_root, "HO3D_v3_manual_test_gt")
@@ -66,7 +67,7 @@ class HO3D(HDataset):
 
     def _preload(self):
         # deal with all the naming and path convention
-        self.name = "HO3D_v3"
+        self.name = f"HO3D_{self.version}"
         self.root = os.path.join(self.data_root, self.name)
         self.root_extra_info = os.path.normpath("assets")
 
@@ -131,12 +132,12 @@ class HO3D(HDataset):
                 info_path = os.path.join(self.root, "evaluation.txt")
                 subfolder = "evaluation"
             else:
-                assert False
+                raise ValueError(f"{self.name} unsupport data split {self.data_split}")
             with open(info_path, "r") as f:
                 lines = f.readlines()
             seq_frames = [line.strip().split("/") for line in lines]
         else:
-            assert False
+            raise ValueError(f"{self.split_mode} is not supported")
         return seq_frames, subfolder
 
     def _load_annots(self, seq_frames=[], subfolder="train", **kwargs):
@@ -159,6 +160,8 @@ class HO3D(HDataset):
                     annot["handBeta"] = np.zeros(10, dtype=np.float32)
 
             img_path = os.path.join(rgb_folder, f"{frame_idx}.jpg")
+            if self.version == "v2":
+                img_path = img_path.replace(".jpg", ".png")
             annot["img"] = img_path
             annot["frame_idx"] = frame_idx
 
@@ -493,12 +496,13 @@ class HO3DV3(HO3D):
 
 
 @DATASET.register_module()
-class HO3Dv3MultiView(torch.utils.data.Dataset):
+class HO3DMultiView(torch.utils.data.Dataset):
 
     def __init__(self, cfg):
 
         self.name = type(self).__name__
         self.cfg = cfg
+        self.version = cfg.get("VERSION", "v3")
         self.n_views = cfg.N_VIEWS
         self.data_split = cfg.DATA_SPLIT
         self.random_n_views = cfg.RANDOM_N_VIEWS  # whether to truncate the batch into size min_views to N_VIEWS
@@ -589,7 +593,7 @@ class HO3Dv3MultiView(torch.utils.data.Dataset):
 
         seq_frames, subfolder = self._load_seq_frames_multiview()
 
-        if self.split_mode in ['paper', 'v2', 'v3']:  # full view mode
+        if self.split_mode == 'paper':
             #source_set_name = f"{self.split_mode}_{self.data_split}"  # eg paper_train
             source_set_name = f"{self.split_mode}_train"
             self._mapping_multiview(seq_frames=seq_frames)
@@ -607,12 +611,13 @@ class HO3Dv3MultiView(torch.utils.data.Dataset):
             raise ValueError(f"{self.split_mode} is not supported")
 
         logger.warning(
-            f"{self.name} {self.split_mode}_{self.data_split} Init Done. {len(self.multiview_sample_idxs)} samples")
+            f"{self.name}_{self.version}_{self.data_split} Init Done. {len(self.multiview_sample_idxs)} samples")
 
     def _single_view_ho3d(self):
         cfg_train = dict(
             TYPE="HO3D",
             DATA_SPLIT="train",
+            VERSION=self.version,
             DATA_MODE=self.data_mode,
             SPLIT_MODE=self.split_mode,
             DATA_ROOT=self.cfg.DATA_ROOT,
@@ -798,15 +803,19 @@ class HO3Dv3MultiView(torch.utils.data.Dataset):
         seq_name_main = multiview_info_list[0]["seq_name_main"]
         extr_mapping = {}
 
+        calib_root = self.root
+        if self.version == "v2":
+            calib_root = calib_root.replace("v2", "v3")  # @NOTE: only HO3D_v3 has the calibration folder
+
         for i in range(len(multiview_id_list)):
             cam_id = int(multiview_info_list[i]["cam_id"])
-            extr_seq_dir = os.path.join(self.root, "calibration", seq_name_main, "calibration", f"trans_{cam_id}.txt")
+            extr_seq_dir = os.path.join(calib_root, "calibration", seq_name_main, "calibration", f"trans_{cam_id}.txt")
             with open(extr_seq_dir) as f:
                 extr = np.loadtxt(f, dtype=np.float32)
             extr_mapping[cam_id] = extr
 
         # get true cam_id, the cam_id above just for convenient index
-        true_cam_order_dir = os.path.join(self.root, "calibration", seq_name_main, "calibration", "cam_orders.txt")
+        true_cam_order_dir = os.path.join(calib_root, "calibration", seq_name_main, "calibration", "cam_orders.txt")
         true_cam_orders = [int(float(number)) for line in open(true_cam_order_dir, 'r') for number in line.split()]
 
         sample = dict()
@@ -925,76 +934,4 @@ class HO3Dv3MultiView(torch.utils.data.Dataset):
         if self.filter_keys:
             sample = key_filter(sample)
 
-        return sample
-
-
-@DATASET.register_module()
-class HO3Dv3MultiView_Video(HO3Dv3MultiView):
-
-    def __init__(self, cfg):
-        super().__init__(cfg)
-
-        self.name = type(self).__name__
-        # self.cfg = cfg
-        self.seq_len = cfg.SEQ_LEN
-        self.drop_last_frames = cfg.get("DROP_LAST_FRAMES", True)
-        self.interval_frames = cfg.get("INTERVAL_FRAMES", 0)
-
-        self._load_video_frames()
-
-        assert self.master_system == "as_constant_camera", f"{self.name} only support master system mode 'as_constant_camera' "
-        logger.warning(
-            f"{self.name} {self.split_mode}_{self.data_split} Init Done. {len(self.multiview_video_sample_idxs)} samples"
-        )
-
-    def _load_video_frames(self):
-        if self.data_split == 'train':
-            with open('./assets/video_task/ho3dv3_multiview_video_idxs_train.pkl', 'rb') as f_idx:
-                all_multiview_samples = pickle.load(f_idx)
-        elif self.data_split == 'test':
-            with open('./assets/video_task/ho3dv3_multiview_video_idxs_test.pkl', 'rb') as f_idx:
-                all_multiview_samples = pickle.load(f_idx)
-        else:
-            raise ValueError(f"Don't supported data_split: {self.data_split}")
-        if self.interval_frames != 0:
-            all_multiview_samples = all_multiview_samples[::self.interval_frames]
-
-        self.multiview_video_sample_idxs = []
-        for i in range(len(all_multiview_samples)):
-            if all_multiview_samples[i][-1] == all_multiview_samples[i + self.seq_len - 1][-1]:
-                tmp_list = []
-                for j in range(i, i + self.seq_len):
-                    tmp_list.append(all_multiview_samples[j])
-                self.multiview_video_sample_idxs.append(tmp_list)
-            if i + self.seq_len == len(all_multiview_samples):
-                break
-
-    def __len__(self):
-        return len(self.multiview_video_sample_idxs)
-
-    def _save_tmp(self, idx):
-        multiview_id_list = self.multiview_sample_idxs[idx]
-        multiview_info_list = self.multiview_sample_infos[idx]
-        tmp = []
-        for i in multiview_info_list:
-            tmp.append(i['seq_name'])
-        save_list = []
-        save_list.append(idx)
-        save_list.append(multiview_id_list)
-        save_list.append(tmp)
-
-        return save_list
-
-    def __getitem__(self, idx):
-        multiview_video_id_list = self.multiview_video_sample_idxs[idx]  # [[idx,[single_idxs],[seq_names]] * seq_len]
-        sample = dict()
-        for i in range(self.seq_len):
-            # get sample from the source set. (HO3Dv3MultiView's getitem)
-            multiview_idx = multiview_video_id_list[i][0]
-            i_sample = super().__getitem__(multiview_idx)
-            for query, value in i_sample.items():
-                if query in sample:
-                    sample[query].append(value)
-                else:
-                    sample[query] = [value]
         return sample

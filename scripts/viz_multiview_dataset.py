@@ -4,8 +4,8 @@ import numpy as np
 import open3d as o3d
 import torch
 from lib.datasets.dexycb import DexYCBMultiView
-from lib.datasets.ho3d import HO3Dv3MultiView
-from lib.datasets.ho3dmv_test import HO3Dv3MultiViewTest
+from lib.datasets.ho3d import HO3DMultiView
+from lib.datasets.ho3dmv_test import HO3DOfficialTestMultiView
 from lib.datasets.oakink import OakInkMultiView
 from lib.datasets.interhand import InterHandMultiView
 from lib.datasets.arctic import ArcticMultiView
@@ -48,8 +48,9 @@ DEXYCB_3D_CONFIG = dict(
 )
 HO3D_3D_CONFIG = dict(
     DATA_MODE="3D",
+    VERSION="v3",
     DATA_ROOT="data",
-    DATA_SPLIT="test",
+    DATA_SPLIT="train",
     CONST_CAM_ID=2,
     N_VIEWS=5,
     RANDOM_N_VIEWS=False,
@@ -240,10 +241,11 @@ def main(args):
         dataset = DexYCBMultiView(cfg)
     elif args.dataset == "ho3d":
         cfg = CN(HO3D_3D_CONFIG)
-        dataset = HO3Dv3MultiView(cfg)
-    elif args.dataset == "ho3d_test":
+        dataset = HO3DMultiView(cfg)
+    elif args.dataset == "ho3dofficialtest":
         cfg = CN(HO3D_3D_CONFIG)
-        dataset = HO3Dv3MultiViewTest(cfg)
+        cfg.DATA_SPLIT = "test"
+        dataset = HO3DOfficialTestMultiView(cfg)
     elif args.dataset == "oakink":
         cfg = CN(OAKINK_3D_CONFIG)
         dataset = OakInkMultiView(cfg)
@@ -261,15 +263,15 @@ def main(args):
 
     hand_face = ManoLayer(mano_assets_root='assets/mano_v1_2').th_faces.numpy()
 
-    viz_ctx = VizContext(non_block=True)
-    viz_ctx.init()
+    # viz_ctx = VizContext(non_block=True)
+    # viz_ctx.init()
     geometry_to_viz = dict(
         hand_mesh=None,
         master_system=None,
         coord_system_list=None,
     )
 
-    for i in range(len(dataset)):
+    for _ in range(len(dataset)):
         i = np.random.randint(len(dataset))
         sample = dataset[i]
         master_id = sample["master_id"]
@@ -413,8 +415,8 @@ def main(args):
                 "tmp/test_dexycb_multiview.png",
                 cv2.cvtColor(final_img_to_show, cv2.COLOR_BGR2RGB),
             )
-            if viz_ctx is not None:
-                viz_ctx.step()
+            # if viz_ctx is not None:
+            #     viz_ctx.step()
             key = cv2.waitKey(10)
             if key == ord("a") or key == ord("d"):
                 break
@@ -429,7 +431,7 @@ if __name__ == "__main__":
                         "--dataset",
                         type=str,
                         default="dexycb",
-                        choices=["dexycb", "ho3d", "oakink", "interhand", "arctic", "ho3d_test"])
+                        choices=["dexycb", "ho3d", "oakink", "interhand", "arctic", "ho3dofficialtest"])
     parser.add_argument("-ms",
                         "--master_system",
                         type=str,

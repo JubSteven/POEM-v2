@@ -2,7 +2,7 @@ from lib.utils.config import CN
 
 from ..utils.builder import build_dataset
 from .dexycb import DexYCB, DexYCBMultiView
-from .ho3d import HO3D, HO3Dv3MultiView
+from .ho3d import HO3D, HO3DMultiView
 from .oakink import OakInk
 from .mix_dataset import MixDataset, MixWebDataset
 from .interhand import InterHand
