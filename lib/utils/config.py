@@ -63,7 +63,6 @@ _C.TRAIN.GRAD_CLIP.TYPE = 2
 _C.TRAIN.GRAD_CLIP.NORM = 0.001
 
 
-
 def default_config() -> CN:
     """
     Get a yacs CfgNode object with the default config values.
@@ -90,6 +89,7 @@ def get_config(config_file: str, arg: Namespace = None, merge: bool = True) -> C
 
     if arg is not None:
         # if arg.batch_size is given, it always have higher priority
+        # if arg has a field batch_size:
         if arg.batch_size is not None:
             if arg.resume is None:
                 logger.warning(f"cfg's batch_size {cfg.TRAIN.BATCH_SIZE} reset to arg.batch_size: {arg.batch_size}")

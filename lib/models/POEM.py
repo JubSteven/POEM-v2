@@ -8,17 +8,22 @@ from manotorch.manolayer import ManoLayer
 
 from termcolor import cprint
 from torch import distributed as dist
-from ..utils.triangulation import batch_triangulate_dlt_torch
-from ..metrics.basic_metric import LossMetric
-from ..metrics.mean_epe import MeanEPE
-from ..metrics.pa_eval import PAEval
-from ..utils.builder import MODEL
-from ..utils.logger import logger
-from ..utils.misc import param_size
-from ..utils.net_utils import load_weights
-from ..utils.recorder import Recorder
-from ..utils.transform import (batch_cam_extr_transf, batch_cam_intr_projection, rot6d_to_aa, mano_to_openpose,
-                               batch_persp_project)
+from lib.utils.triangulation import batch_triangulate_dlt_torch
+from lib.metrics.basic_metric import LossMetric
+from lib.metrics.mean_epe import MeanEPE
+from lib.metrics.pa_eval import PAEval
+from lib.utils.builder import MODEL
+from lib.utils.logger import logger
+from lib.utils.misc import param_size
+from lib.utils.net_utils import load_weights
+from lib.utils.recorder import Recorder
+from lib.utils.transform import (
+    batch_cam_extr_transf,
+    batch_cam_intr_projection,
+    rot6d_to_aa,
+    mano_to_openpose,
+    batch_persp_project,
+)
 from ..viztools.draw import draw_batch_joint_images, draw_batch_verts_images
 from .backbones import build_backbone
 from .bricks.conv import ConvBlock
@@ -617,15 +622,18 @@ class PtEmbedMultiviewStereoV2(ModelABC):
         self.MPJPE_3D.feed(pred_J3d, gt_kp=gt_J3d)
         self.MPJPE_3D_REF.feed(pred_ref_J3d, gt_kp=gt_J3d)
         self.MPVPE_3D.feed(pred_V3d, gt_kp=gt_V3d)
-
         self.MPJPE_3D_REL.feed(pred_J3d_rel, gt_kp=gt_J3d_rel)
         self.MPVPE_3D_REL.feed(pred_V3d_rel, gt_kp=gt_V3d_rel)
-
         self.PA.feed(pred_J3d, gt_J3d, pred_V3d, gt_V3d)
 
         if "callback" in kwargs:
             callback = kwargs.pop("callback")
             if callable(callback):
+                if type(callback).__name__ == "HO3DOfficialEvalCallback":
+                    preds["batch_xyz_pred"] = pred_J3d  # (B, 21, 3)
+                    preds["batch_verts_pred"] = pred_V3d
+                    batch["batch_xyz"] = gt_J3d
+                    batch["batch_verts"] = gt_V3d
                 callback(preds, batch, step_idx, **kwargs)
 
         return preds

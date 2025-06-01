@@ -5,7 +5,7 @@ import open3d as o3d
 import torch
 from lib.datasets.dexycb import DexYCBMultiView
 from lib.datasets.ho3d import HO3DMultiView
-from lib.datasets.ho3dmv_test import HO3DOfficialTestMultiView
+from lib.datasets.ho3d_official_test import HO3DOfficialTestMultiView
 from lib.datasets.oakink import OakInkMultiView
 from lib.datasets.interhand import InterHandMultiView
 from lib.datasets.arctic import ArcticMultiView
@@ -273,7 +273,7 @@ def main(args):
 
     for _ in range(len(dataset)):
         i = np.random.randint(len(dataset))
-        sample = dataset[i]
+        sample = dataset[i]  # __getitem__
         master_id = sample["master_id"]
 
         master_joints_3d = sample["master_joints_3d"]
@@ -412,7 +412,7 @@ def main(args):
 
         while True:
             cv2.imshow(
-                "tmp/test_dexycb_multiview.png",
+                f"{args.dataset}_multiview.png",
                 cv2.cvtColor(final_img_to_show, cv2.COLOR_BGR2RGB),
             )
             # if viz_ctx is not None:

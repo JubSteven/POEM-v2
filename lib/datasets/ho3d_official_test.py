@@ -77,7 +77,6 @@ class HO3DOfficialTestMultiView(HO3DMultiView):
         self.master_system = cfg.MASTER_SYSTEM
         assert self.master_system in ["as_constant_camera", "as_first_camera"], \
             f"{self.name} only support as_constant_camera master system"
-        self.const_cam_id = cfg.CONST_CAM_ID
 
         self.data_mode = cfg.DATA_MODE
         assert self.data_mode == "3D", f"{self.name} only support 3D data mode"
@@ -204,6 +203,11 @@ class HO3DOfficialTestMultiView(HO3DMultiView):
         sample["sample_idx"] = multiview_id_list
         sample["cam_extr"] = list()
         sample["cam_serial"] = list()
+
+        lists_to_shuffle = list(zip(multiview_id_list, multiview_info_list))
+        random.shuffle(lists_to_shuffle)
+        multiview_id_list, multiview_info_list = zip(*lists_to_shuffle)
+
         for i, info in zip(multiview_id_list, multiview_info_list):
             # get the source set -- one of the  HO3D s#_train, s#_val and s#_test.
             source_set = self.set_mappings[info["set_name"]]
@@ -244,24 +248,24 @@ class HO3DOfficialTestMultiView(HO3DMultiView):
         # @FLAG dump
         if self.return_before_aug:
             return sample
+        """ set a new master (deprecated in this class) 
+        if self.master_system == "as_first_camera":
+            new_master_id = 0
+            new_master_serial = sample["cam_serial"][new_master_id]
+            T_master_2_new_master = sample["cam_extr"][new_master_id]
+            master_joints_3d = sample["target_joints_3d_no_rot"][new_master_id]
+            master_verts_3d = sample["target_verts_3d_no_rot"][new_master_id]
+        elif self.master_system == "as_constant_camera":
+            new_master_serial = sample["cam_serial"][0][:-1] + f"{self.const_cam_id}"
+            new_master_id = sample["cam_serial"].index(new_master_serial)
+            T_master_2_new_master = sample["cam_extr"][new_master_id]
+            master_joints_3d = sample["target_joints_3d_no_rot"][new_master_id]
+            master_verts_3d = sample["target_verts_3d_no_rot"][new_master_id]
+        """
 
-        # set a new master
-        # if self.master_system == "as_first_camera":
-        #     new_master_id = 0
-        #     new_master_serial = sample["cam_serial"][new_master_id]
-        #     T_master_2_new_master = sample["cam_extr"][new_master_id]
-        #     master_joints_3d = sample["target_joints_3d_no_rot"][new_master_id]
-        #     master_verts_3d = sample["target_verts_3d_no_rot"][new_master_id]
-
-        # elif self.master_system == "as_constant_camera":
-        #     new_master_serial = sample["cam_serial"][0][:-1] + f"{self.const_cam_id}"
-        #     new_master_id = sample["cam_serial"].index(new_master_serial)
-        #     T_master_2_new_master = sample["cam_extr"][new_master_id]
-        #     master_joints_3d = sample["target_joints_3d_no_rot"][new_master_id]
-        #     master_verts_3d = sample["target_verts_3d_no_rot"][new_master_id]
-
-        new_master_serial = random.sample(sample["cam_serial"], 1)[0]
-        new_master_id = sample["cam_serial"].index(new_master_serial)
+        # @NOTE randomly select a new master camera system
+        new_master_id = 0
+        new_master_serial = sample["cam_serial"][new_master_id]
         T_master_2_new_master = sample["cam_extr"][new_master_id]
         master_joints_3d = sample["target_joints_3d_no_rot"][new_master_id]
         master_verts_3d = sample["target_verts_3d_no_rot"][new_master_id]
@@ -287,26 +291,120 @@ class HO3DOfficialTestMultiView(HO3DMultiView):
         sample["master_verts_3d"] = master_verts_3d
         sample["cam_serial"] = list(sample["cam_serial"])  # normalization for further collation
 
-        if self.random_n_views:
-            assert sample["master_id"] == 0  # ! The master must be the first.
-            masked_sample = {}
-            indices = [i for i in range(1, self.n_views)]  # idx from 1 to n - 1
-            if self.n_views_kept != self.n_views:
-                num_views_keep = self.n_views_kept - 1
-            else:
-                num_views_keep = random.randint(self.min_views - 1, self.n_views - 1)
-            sample_idx_keep = random.sample(indices, num_views_keep)
-            sample_idx_keep.insert(0, 0)  # always keep the master
+        # if self.random_n_views:
+        #     assert sample["master_id"] == 0  # ! The master must be the first.
+        #     masked_sample = {}
+        #     indices = [i for i in range(1, self.n_views)]  # idx from 1 to n - 1
+        #     if self.n_views_kept != self.n_views:
+        #         num_views_keep = self.n_views_kept - 1
+        #     else:
+        #         num_views_keep = random.randint(self.min_views - 1, self.n_views - 1)
+        #     sample_idx_keep = random.sample(indices, num_views_keep)
+        #     sample_idx_keep.insert(0, 0)  # always keep the master
 
-            for key, value in sample.items():
-                if not isinstance(value, int) and len(value) == self.n_views:  # process info with len == 8
-                    masked_value = np.array([value[i] for i in sample_idx_keep])
-                    masked_sample[key] = masked_value
-                else:
-                    masked_sample[key] = value  # other info with len != 8
-            sample = masked_sample
+        #     for key, value in sample.items():
+        #         if not isinstance(value, int) and len(value) == self.n_views:  # process info with len == 8
+        #             masked_value = np.array([value[i] for i in sample_idx_keep])
+        #             masked_sample[key] = masked_value
+        #         else:
+        #             masked_sample[key] = value  # other info with len != 8
+        #     sample = masked_sample
 
         if self.filter_keys:
             sample = key_filter(sample)
 
         return sample
+
+
+class HO3DOfficialTestEvalUtil:
+    """ Util class for evaluation networks.
+    """
+
+    def __init__(self, num_kp=21):
+        # init empty data storage
+        self.data = list()
+        self.num_kp = num_kp
+        for _ in range(num_kp):
+            self.data.append(list())
+
+    def feed(self, keypoint_gt, keypoint_vis, keypoint_pred, skip_check=False):
+        """ Used to feed data to the class. Stores the euclidean distance between gt and pred, when it is visible. """
+        if not skip_check:
+            keypoint_gt = np.squeeze(keypoint_gt)
+            keypoint_pred = np.squeeze(keypoint_pred)
+            keypoint_vis = np.squeeze(keypoint_vis).astype('bool')
+
+            assert len(keypoint_gt.shape) == 2
+            assert len(keypoint_pred.shape) == 2
+            assert len(keypoint_vis.shape) == 1
+
+        # calc euclidean distance
+        diff = keypoint_gt - keypoint_pred
+        euclidean_dist = np.sqrt(np.sum(np.square(diff), axis=1))
+
+        num_kp = keypoint_gt.shape[0]
+        for i in range(num_kp):
+            if keypoint_vis[i]:
+                self.data[i].append(euclidean_dist[i])
+
+    def _get_pck(self, kp_id, threshold):
+        """ Returns pck for one keypoint for the given threshold. """
+        if len(self.data[kp_id]) == 0:
+            return None
+
+        data = np.array(self.data[kp_id])
+        pck = np.mean((data <= threshold).astype('float'))
+        return pck
+
+    def _get_epe(self, kp_id):
+        """ Returns end point error for one keypoint. """
+        if len(self.data[kp_id]) == 0:
+            return None, None
+
+        data = np.array(self.data[kp_id])
+        epe_mean = np.mean(data)
+        epe_median = np.median(data)
+        return epe_mean, epe_median
+
+    def get_measures(self, val_min, val_max, steps):
+        """ Outputs the average mean and median error as well as the pck score. """
+        thresholds = np.linspace(val_min, val_max, steps)
+        thresholds = np.array(thresholds)
+        norm_factor = np.trapz(np.ones_like(thresholds), thresholds)
+
+        # init mean measures
+        epe_mean_all = list()
+        epe_median_all = list()
+        auc_all = list()
+        pck_curve_all = list()
+
+        # Create one plot for each part
+        for part_id in range(self.num_kp):
+            # mean/median error
+            mean, median = self._get_epe(part_id)
+
+            if mean is None:
+                # there was no valid measurement for this keypoint
+                continue
+
+            epe_mean_all.append(mean)
+            epe_median_all.append(median)
+
+            # pck/auc
+            pck_curve = list()
+            for t in thresholds:
+                pck = self._get_pck(part_id, t)
+                pck_curve.append(pck)
+
+            pck_curve = np.array(pck_curve)
+            pck_curve_all.append(pck_curve)
+            auc = np.trapz(pck_curve, thresholds)
+            auc /= norm_factor
+            auc_all.append(auc)
+
+        epe_mean_all = np.mean(np.array(epe_mean_all))
+        epe_median_all = np.mean(np.array(epe_median_all))
+        auc_all = np.mean(np.array(auc_all))
+        pck_curve_all = np.mean(np.array(pck_curve_all), 0)  # mean only over keypoints
+
+        return epe_mean_all, epe_median_all, auc_all, pck_curve_all, thresholds
