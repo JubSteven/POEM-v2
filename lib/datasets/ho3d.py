@@ -74,6 +74,7 @@ class HO3D(HDataset):
         self.cache_identifier_dict = {
             "data_split": self.data_split,
             "split_mode": self.split_mode,
+            "version": self.version,
         }
         self.cache_identifier_raw = json.dumps(self.cache_identifier_dict, sort_keys=True)
         self.cache_identifier = hashlib.md5(self.cache_identifier_raw.encode("ascii")).hexdigest()
