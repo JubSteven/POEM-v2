@@ -77,19 +77,6 @@ Human-to-Robot Teleoperation with a few cost-effective cameras:
     </td>
   </tr>
 </table>
-
-
-
-
-
-
-
-
-
-
-
-
-
 <br/><br/>
 
 ## :joystick: Instructions
@@ -119,6 +106,51 @@ Download the pretrained checkpoints at :link:[ckpt_release](https://drive.google
 - `--cfg`, config file for this experiment, e.g. `--cfg config/release/train_${MODEL}.yaml`.
 - `--exp_id` specify the name of experiment, e.g. `--exp_id ${EXP_ID}`. When `--exp_id` is provided, the code requires that no uncommitted change is remained in the git repo. Otherwise, it defaults to 'default' for training and 'eval\_{cfg}' for evaluation. All results will be saved in `exp/${EXP_ID}*{timestamp}`.
 - `--reload`, specify the path to the checkpoint (.pth.tar) to be loaded.
+
+### Compare POEM-v2 vs Single-view methods on HO3D
+
+To provide a holistic benchmark, we compare POEM-v2 with state-of-the-art **single-view** 3D hand recon-
+struction frameworks. 
+Since the absolute position of hands
+is ambiguous in a single-view setting, we only report the
+MPJPE and MPVPE under the Procrustes Alignment.
+
+We perform this comparison on the **official HO3D test set** v2 and v3, now the testset GT can be download from the [official repo](https://github.com/shreyashampali/ho3d) (Update - Nov 3rd, 2024).
+```shell
+├── HO3D_v2 
+├── HO3D_v2_official_gt 
+│   ├── evaluation_verts.json
+│   └── evaluation_xyz.json
+├── HO3D_v3 
+├── HO3D_v3_manual_test_gt 
+    ├── evaluation_verts.json
+    └── evaluation_xyz.json
+```
+
+Then run the following command to get the results:
+```shell
+# HO3D_VERSION can be set to 2 or 3,
+$ python scripts/eval_ho3d_official.py  --ho3d-v ${HO3D_VERSION}
+                                        --cfg config/release/eval_single.yaml 
+                                        --model large  
+                                        --reload ${PATH_TO_POEM_LARGE_CKPT} 
+                                        --eval_extra ho3d_offi 
+```
+Then you can get the results reported in the paper: 
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/res/ho3dv2_res.png" alt="demo_single" width="100%" />
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="docs/res/ho3dv3_res.png" alt="teleop" width="100%" />
+    </td>
+  </tr>
+</table>
+
+
+
+
 
 ### Evaluation
 

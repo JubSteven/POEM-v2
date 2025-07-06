@@ -19,9 +19,11 @@ from lib.utils.config import get_config
 from lib.utils.testing import IdleCallback, AUCCallback, DrawingHandCallback, HO3DOfficialEvalCallback
 from lib.utils.logger import logger
 
-HO3Dv3_OFFICIAL_TEST_CFG = dict(
+UNDEFINED = None
+
+HO3D_OFFICIAL_TEST_CFG = dict(
     DATA_MODE="3D",
-    VERSION="v2",
+    VERSION=UNDEFINED,
     DATA_ROOT="data",
     DATA_SPLIT="test",
     N_VIEWS=5,
@@ -55,9 +57,15 @@ EMBED_SIZE = [128, 256, 512, 1024, 256]
 
 def main(cfg: CN, arg: Namespace, time_f: float):
 
-    cfg_dataset = CN(HO3Dv3_OFFICIAL_TEST_CFG)
-    dataset = HO3DOfficialTestMultiView(cfg_dataset)
+    cfg_dataset = CN(HO3D_OFFICIAL_TEST_CFG)
+    if arg.ho3d_v == "2":
+        cfg_dataset.VERSION = "v2"
+    elif arg.ho3d_v == "3":
+        cfg_dataset.VERSION = "v3"
+    else:
+        raise ValueError(f"Unsupported HO3D version: {arg.ho3d_v}")
 
+    dataset = HO3DOfficialTestMultiView(cfg_dataset)
     dataloader = DataLoader(dataset,
                             batch_size=1,
                             shuffle=False,
@@ -95,7 +103,7 @@ def main(cfg: CN, arg: Namespace, time_f: float):
         cb = AUCCallback(val_max=val_max, exp_dir=os.path.join(recorder.eval_dump_path))
     elif arg.eval_extra == "draw":
         cb = DrawingHandCallback(img_draw_dir=os.path.join(recorder.dump_path, "draws"))
-    elif arg.eval_extra == "ho3d":
+    elif arg.eval_extra == "ho3d_offi":
         cb = HO3DOfficialEvalCallback(exp_dir=os.path.join(recorder.eval_dump_path))
     else:
         cb = IdleCallback()
@@ -122,10 +130,11 @@ if __name__ == "__main__":
     parser.add_argument("--port", "-p", type=int, default=60000, help="Port to run the evaluation.")
     parser.add_argument("--exp_id", default="default", type=str, help="Experiment ID")
     parser.add_argument("--log_freq", default=10, type=int, help="How often to write summary logs")
+    parser.add_argument("--ho3d-v", default="3", type=str, choices=["3", "2"], help="HO3D version to use, 2 or 3")
     parser.add_argument("--eval_extra",
                         default="none",
                         type=str,
-                        choices=["none", "auc", "draw", "ho3d"],
+                        choices=["none", "auc", "draw", "ho3d_offi"],
                         help="Extra mode for testing, e.g. `draw`: test with drawing")
 
     exp_time = time()
