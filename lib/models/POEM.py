@@ -303,9 +303,10 @@ class PtEmbedMultiviewStereoV2(ModelABC):
                 ref_joints.append(ref_joints_sub)
             ref_joints = torch.cat(ref_joints, dim=0)
 
-        gt_J3d = batch["master_joints_3d"].reshape(-1, 21, 3)
-        gt_V3d = batch["master_verts_3d"].reshape(-1, 778, 3)
-        gt_mesh = torch.cat([gt_J3d, gt_V3d], dim=1)  # (B, 799, 3)
+        if mode != "inference":
+            gt_J3d = batch["master_joints_3d"].reshape(-1, 21, 3)
+            gt_V3d = batch["master_verts_3d"].reshape(-1, 778, 3)
+            gt_mesh = torch.cat([gt_J3d, gt_V3d], dim=1)  # (B, 799, 3)
 
         # prepare image_metas
         img_metas = {
@@ -313,16 +314,25 @@ class PtEmbedMultiviewStereoV2(ModelABC):
             "cam_intr": batch["target_cam_intr"].reshape(-1, 3, 3),  # tensor (BN, 3, 3)
             "cam_extr": batch["target_cam_extr"].reshape(-1, 4, 4),  # tensor  (BN, 4, 4)
             "master_id": batch["master_id"],  # lst (B, )
-            "ref_mesh_gt": gt_mesh,
+            # "ref_mesh_gt": gt_mesh,
             "cam_view_num": batch["cam_view_num"]
         }
+        if mode != "inference":
+            img_metas["ref_mesh_gt"] = gt_mesh
+            img_metas["master_joints_3d"] = gt_J3d
+            img_metas["master_verts_3d"] = gt_V3d
 
-        debug_metas = {"img": batch["image"], "2d_joints_gt": batch["target_joints_2d"]}
+            debug_metas = {"img": batch["image"], "2d_joints_gt": batch["target_joints_2d"]}
 
-        preds = self.ptEmb_head(mlvl_feat=mlvl_feat,
-                                img_metas=img_metas,
-                                reference_joints=ref_joints,
-                                debug_metas=debug_metas)
+        extra_kwargs = {}
+        if mode != "inference":
+            extra_kwargs["debug_metas"] = debug_metas
+        preds = self.ptEmb_head(
+            mlvl_feat=mlvl_feat,
+            img_metas=img_metas,
+            reference_joints=ref_joints,
+            **extra_kwargs,
+        )
 
         # last decoder's output
         pred_joints_3d = preds["all_coords_preds"][-1, :, :self.num_joints, :]  # (B, 21, 3)
@@ -677,6 +687,19 @@ class PtEmbedMultiviewStereoV2(ModelABC):
             metric_toshow = [self.MPJPE_3D, self.MPVPE_3D]
 
         return " | ".join([str(me) for me in metric_toshow])
+
+    def inference_step(self, batch, step_idx, **kwargs):
+        # img = batch["image"]  # (BN, 3, H, W) 4 channels
+        # batch_size = len(batch["cam_view_num"])
+
+        preds = self._forward_impl(batch, mode="inference", **kwargs)
+
+        if "callback" in kwargs:
+            callback = kwargs.pop("callback")
+            if callable(callback):
+                callback(preds, batch, step_idx, **kwargs)
+
+        return preds
 
     def forward(self, inputs, step_idx, mode="train", **kwargs):
         if mode == "train":
