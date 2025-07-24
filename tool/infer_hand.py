@@ -44,6 +44,8 @@ from video_tool.ffmpeg_util import FFMPEGFrameLoader
 # use legacy viz context
 from lib.viztools.viz_o3d_utils import VizContext
 
+from .flip_util import flip_cam_extr
+
 
 def bbox_get_center_scale(bbox, expand=2.0, mindim=200):
     w, h = float(bbox[2] - bbox[0]), float(bbox[3] - bbox[1])
@@ -55,7 +57,7 @@ def bbox_get_center_scale(bbox, expand=2.0, mindim=200):
     return np.array((center_x, center_y)), s
 
 
-def format_batch(img_list, bbox_list, req_flip, camera_name_list, cam_intr_map, cam_extr_map, output_size, device):
+def format_batch(img_list, bbox_list, req_flip, camera_name_list, cam_intr_map, cam_extr_map, img_size, output_size, device):
     cam_serial_list, cam_intr_list, cam_extr_list, image_list = [], [], [], []
     for cam_name, img, bbox in zip(camera_name_list, img_list, bbox_list):
         if bbox is None:
@@ -64,6 +66,19 @@ def format_batch(img_list, bbox_list, req_flip, camera_name_list, cam_intr_map, 
         cam_extr_ori = cam_extr_map[cam_name]
         # get bbox center and bbox scale
         bbox_center, bbox_scale = bbox_get_center_scale(bbox)
+        cam_center = np.array([cam_intr_ori[0, 2], cam_intr_ori[1, 2]])
+
+        if req_flip:
+            bbox_center[0] = 2 * cam_center[0] - bbox_center[0]
+            # image & mask should be flipped horizontally with center at cam_center[0]
+            # use cv2
+            M = np.array([[-1, 0, 2 * cam_center[0]], [0, 1, 0]], dtype=np.float32)
+            # Use warpAffine to apply the reflection
+            img = cv2.warpAffine(img, M, img_size)
+            cam_extr = inv_transf_np(flip_cam_extr(inv_transf_np(cam_extr_ori))).astype(np.float32)
+        else:
+            cam_extr = cam_extr_ori.copy()
+
         affine = _affine_transform(center=bbox_center, scale=bbox_scale, out_res=output_size, rot=0)
         affine_2x3 = affine[:2, :]
         imgcrop = cv2.warpAffine(img,
@@ -71,7 +86,7 @@ def format_batch(img_list, bbox_list, req_flip, camera_name_list, cam_intr_map, 
                                  flags=cv2.INTER_LINEAR,
                                  borderMode=cv2.BORDER_CONSTANT)
 
-        # cv2.imshow(cam_name, imgcrop[..., ::-1])
+        cv2.imshow(cam_name, imgcrop[..., ::-1])
 
         image = tvF.to_tensor(imgcrop)
         assert image.shape[0] == 3
@@ -85,13 +100,12 @@ def format_batch(img_list, bbox_list, req_flip, camera_name_list, cam_intr_map, 
                                                     rot=0)
         cam_intr = affine_postrot.dot(cam_intr_ori)
 
-        cam_extr = cam_extr_ori  # TODO: req_flip
-
         image_list.append(image)
         cam_serial_list.append(cam_name)
         cam_intr_list.append(cam_intr)
         cam_extr_list.append(cam_extr)
-    # cv2.waitKey(1)
+    
+    cv2.waitKey(1)
     if len(cam_serial_list) <= 1:
         return None
 
@@ -120,6 +134,11 @@ def format_batch(img_list, bbox_list, req_flip, camera_name_list, cam_intr_map, 
 
 
 def extract_pred(pred, batch, req_flip, cam_extr_map):
+    def flip_3d(annot_3d):
+        annot_3d = annot_3d.copy()
+        annot_3d[:, 0] = -annot_3d[:, 0]
+        return annot_3d
+
     # for k, v in pred.items():
     #     print(k, v.shape)
     master_id = batch["master_id"][0]
@@ -129,9 +148,14 @@ def extract_pred(pred, batch, req_flip, cam_extr_map):
     vert3d_in_master = pred["pred_verts_3d"][0]
     vert3d_in_master_np = vert3d_in_master.detach().cpu().numpy()
     master_cam_extr = cam_extr_map[master_serial]
+    if req_flip:
+        master_cam_extr = inv_transf_np(flip_cam_extr(inv_transf_np(master_cam_extr)))
     master_cam_transf = inv_transf_np(master_cam_extr)
     joint3d_in_world_np = transf_point_array_np(master_cam_transf, joint3d_in_master_np)
     vert3d_in_world_np = transf_point_array_np(master_cam_transf, vert3d_in_master_np)
+    if req_flip:
+        joint3d_in_world_np = flip_3d(joint3d_in_world_np)
+        vert3d_in_world_np = flip_3d(vert3d_in_world_np)
     return {
         "joints": joint3d_in_world_np,
         "verts": vert3d_in_world_np,
@@ -148,6 +172,7 @@ VIDEO_SHAPE = (1280, 720)
 DATA_FILEDIR = "/prefix/data/data"
 MASK_FILEDIR = "/prefix/data/human_mask_hand"
 CALIB_FILEDIR = "/prefix/data/calib/calib__2025_0319_1534_41"
+HAND_SIDE_FILEPATH = "/prefix/data/hand_labels.json"
 
 
 def main(
@@ -177,11 +202,6 @@ def main(
     camera_name_list = list(CAMERA_INFO.values())
 
     # load param
-    seq_curr = all_sequence_list[0]
-
-    seq_filedir = os.path.join(DATA_FILEDIR, seq_curr)
-    mask_filedir = os.path.join(MASK_FILEDIR, seq_curr)
-
     cam_extr_filedir = os.path.join(CALIB_FILEDIR, "cam_extr")
     cam_extr_map = {}
     for cam_name in camera_name_list:
@@ -193,8 +213,23 @@ def main(
         with open(os.path.join(cam_intr_filedir, f"{cam_name}.pkl"), "rb") as ifs:
             cam_intr_map[cam_name] = np.array(pickle.load(ifs), dtype=np.float32)
 
+    # load hand side
+    hand_side_filepath = HAND_SIDE_FILEPATH
+    with open(hand_side_filepath, "r") as ifs:
+        hand_side_dict = json.load(ifs)
+    hand_side_dict = {k: "rh" if v == "right" else "lh" for k, v in hand_side_dict.items()}
+
+    # handle sequence
+    # seq_curr = all_sequence_list[0]
+    seq_curr = all_sequence_list[2]
+
+    seq_filedir = os.path.join(DATA_FILEDIR, seq_curr)
+    mask_filedir = os.path.join(MASK_FILEDIR, seq_curr)
+    hand_side = hand_side_dict[seq_curr]
+
     process_seq(seq_filedir=seq_filedir,
                 mask_filedir=mask_filedir,
+                hand_side=hand_side,
                 model=model,
                 device=device,
                 camera_name_list=camera_name_list,
@@ -203,7 +238,8 @@ def main(
                 hand_faces_np=hand_faces_np)
 
 
-def process_seq(seq_filedir, mask_filedir, model, device, camera_name_list, cam_extr_map, cam_intr_map, hand_faces_np):
+def process_seq(seq_filedir, mask_filedir, hand_side, model, device, camera_name_list, cam_extr_map, cam_intr_map,
+                hand_faces_np):
     loader_map = {}
     for cam_name in camera_name_list:
         loader_map[cam_name] = FFMPEGFrameLoader(
@@ -231,17 +267,19 @@ def process_seq(seq_filedir, mask_filedir, model, device, camera_name_list, cam_
             continue
 
         # process_right
+        req_flip = hand_side == "lh"
         batch = format_batch(img_list=img_list,
-                                bbox_list=bboxes,
-                                req_flip=False,
-                                camera_name_list=camera_name_list,
-                                cam_intr_map=cam_intr_map,
-                                cam_extr_map=cam_extr_map,
-                                output_size=cfg.DATA_PRESET.IMAGE_SIZE,
-                                device=device)
+                             bbox_list=bboxes,
+                             req_flip=req_flip,
+                             camera_name_list=camera_name_list,
+                             cam_intr_map=cam_intr_map,
+                             cam_extr_map=cam_extr_map,
+                             img_size=VIDEO_SHAPE,
+                             output_size=cfg.DATA_PRESET.IMAGE_SIZE,
+                             device=device)
         with torch.no_grad():
             pred = model(batch, 0, "inference", epoch_idx=0)
-        payload = extract_pred(pred, batch, req_flip=False, cam_extr_map=cam_extr_map)
+        payload = extract_pred(pred, batch, req_flip=req_flip, cam_extr_map=cam_extr_map)
 
         # viz by reprojection
         hand_faces = hand_faces_np
@@ -250,14 +288,14 @@ def process_seq(seq_filedir, mask_filedir, model, device, camera_name_list, cam_
 
             _v3d = transf_point_array_np(cam_extr, payload["verts"])
             _v2d = project_point_array_np(cam_intr, _v3d)
-            
+
             _img = img_list[camera_name_list.index(cam_name)].copy()
             _img = cv2.cvtColor(_img, cv2.COLOR_RGB2BGR)
 
             # paint 2d points
             for i in range(_v2d.shape[0]):
                 _img = cv2.circle(_img, (int(_v2d[i, 0]), int(_v2d[i, 1])), 1, (0, 255, 0), cv2.FILLED)
-            
+
             cv2.imshow("x", _img)
             while True:
                 key = cv2.waitKey(1)
