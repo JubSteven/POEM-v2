@@ -189,6 +189,29 @@ All the checkpoints during training are saved at `exp/${EXP_ID}_{timestamp}/chec
 
 &nbsp;
 
+### Deployment on example in-the-wild data
+
+Download the example data from [huggingface](https://huggingface.co/kelvin34501/POEM-v2_example_data/blob/main/example_data.tar.xz). 
+The tarball includes challenging multi-view image streams of hand-object interactions captured in a laboratory setting, along with the corresponding camera calibration parameters, hand poses, and hand side information.
+
+In the file `tool/infer_hand.py`, modify the path prefix (`/prefix/data/`) to the full path of the directory where the data has been extracted.
+
+```python
+DATA_FILEDIR = "/prefix/data/data" # Modify /prefix/data to where example data is extracted
+MASK_FILEDIR = "/prefix/data/human_mask_hand"
+CALIB_FILEDIR = "/prefix/data/calib/calib__2025_0319_1534_41"
+HAND_SIDE_FILEPATH = "/prefix/data/hand_labels.json"
+```
+
+The visualize command:
+
+```bash
+python -m tool.infer_hand -c config/release/eval_single.yaml --reload ./checkpoints/medium.pth.tar -g 0
+```
+
+&nbsp;
+
+
 ## License
 
 This code and model are available for non-commercial scientific research purposes as defined in the [LICENSE](LICENSE) file. By downloading and using the code and model you agree to the terms in the [LICENSE](LICENSE).

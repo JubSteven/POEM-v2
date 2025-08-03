@@ -221,21 +221,21 @@ def main(
 
     # handle sequence
     # seq_curr = all_sequence_list[0]
-    seq_curr = all_sequence_list[2]
+    for seq_curr in all_sequence_list:
 
-    seq_filedir = os.path.join(DATA_FILEDIR, seq_curr)
-    mask_filedir = os.path.join(MASK_FILEDIR, seq_curr)
-    hand_side = hand_side_dict[seq_curr]
+        seq_filedir = os.path.join(DATA_FILEDIR, seq_curr)
+        mask_filedir = os.path.join(MASK_FILEDIR, seq_curr)
+        hand_side = hand_side_dict[seq_curr]
 
-    process_seq(seq_filedir=seq_filedir,
-                mask_filedir=mask_filedir,
-                hand_side=hand_side,
-                model=model,
-                device=device,
-                camera_name_list=camera_name_list,
-                cam_extr_map=cam_extr_map,
-                cam_intr_map=cam_intr_map,
-                hand_faces_np=hand_faces_np)
+        process_seq(seq_filedir=seq_filedir,
+                    mask_filedir=mask_filedir,
+                    hand_side=hand_side,
+                    model=model,
+                    device=device,
+                    camera_name_list=camera_name_list,
+                    cam_extr_map=cam_extr_map,
+                    cam_intr_map=cam_intr_map,
+                    hand_faces_np=hand_faces_np)
 
 
 def process_seq(seq_filedir, mask_filedir, hand_side, model, device, camera_name_list, cam_extr_map, cam_intr_map,
@@ -283,6 +283,7 @@ def process_seq(seq_filedir, mask_filedir, hand_side, model, device, camera_name
 
         # viz by reprojection
         hand_faces = hand_faces_np
+        _img_list = []
         for cam_name, cam_extr in cam_extr_map.items():
             cam_intr = cam_intr_map[cam_name]
 
@@ -296,11 +297,15 @@ def process_seq(seq_filedir, mask_filedir, hand_side, model, device, camera_name
             for i in range(_v2d.shape[0]):
                 _img = cv2.circle(_img, (int(_v2d[i, 0]), int(_v2d[i, 1])), 1, (0, 255, 0), cv2.FILLED)
 
-            cv2.imshow("x", _img)
-            while True:
-                key = cv2.waitKey(1)
-                if key == ord('\r'):
-                    break
+            _img_list.append(_img)
+
+        _img_list = [cv2.resize(_img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR) for _img in _img_list]
+        _img = np.concatenate(_img_list, axis=1)
+        cv2.imshow("x", _img)
+        while True:
+            key = cv2.waitKey(1)
+            if key == ord('\r'):
+                break
 
 
 MODEL_CATEGORY = ['small', 'medium', 'large', 'huge', 'medium_MANO']
