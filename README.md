@@ -75,8 +75,7 @@ by a _world-mirroring process_ (horizon-tally flipping all images and mirroring 
 We provide a **real-world demonstration** for running our model.   
 
 Download the example data from [huggingface](https://huggingface.co/kelvin34501/POEM-v2_example_data/blob/main/example_data.tar.xz). 
-The tarball includes **multi-view video of manipulaiton** captured in a laboratory setting,   
-along with the corresponding camera **instrinsics and extrinsics**, hand poses, and hand's side information.
+The tarball includes **multi-view video of manipulaiton** captured in a laboratory setting, along with the corresponding camera **instrinsics and extrinsics**, hand poses, and hand's side information.
 
 In the file `tool/infer_hand.py`, modify the path prefix (`/prefix/data/`) to the full path of the directory where the data has been extracted.
 
@@ -91,6 +90,13 @@ The visualize command (you need to install our env first)
 ```bash
 python -m tool.infer_hand -c config/release/eval_single.yaml --reload ./checkpoints/medium.pth.tar -g 0
 ```
+As a multiview method, camera **extrinsics mat** is crucial for POEM-v2 making prediction. 
+In the `tool/infer_hand.py`, we require the N extrinsics matrices $T_{cw}$ in the SE(3) form: 
+```math
+P_c = T_{cw} \cdot P_w
+```
+where `c` indicats the camera coordinate system, `w` indicates the world, and $\mathbf{P}_c$ is the 3D points in camera system.
+
 --- 
 
 ## :notebook: Instructions
