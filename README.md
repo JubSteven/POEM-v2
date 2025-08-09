@@ -32,6 +32,26 @@
   </p>
 </p>
 
+
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td colspan="2" align="center">
+      <img src="./docs/demo_both.png" alt="both" width="100%" />
+      <p><em>Supports reconstruction of both left and right hand.</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="58%" align="center">
+      <img src="docs/demo_single.png" alt="demo_single" width="100%" />
+      <p><em>Absolute metric output and occlusion-robust.</em></p>
+    </td>
+    <td width="42%" align="center">
+      <img src="docs/teleop_sim.gif" alt="teleop" width="100%" />
+      <p><em>It support Human-hand teleoperation.</em></p>
+    </td>
+  </tr>
+</table>
+
 ### What‘s _POEM-v2_?  
 POEM (**PO**int-**EM**bed Multi-view Transformer) v2 is a generalizable **multi-view** hand mesh recovery model designed for seamless use in real-world hand MoCap & teleoperation. 
 
@@ -51,35 +71,29 @@ It can handle occlusion and partial visibility by leveraging views where the han
 Although trained on right-hand data, it can still also handle left hand 
 by a _world-mirroring process_ (horizon-tally flipping all images and mirroring camera extrinsics along the first camera's Y-Z plane)
 
+### :joystick: Try me
+We provide a **real-world demonstration** for running our model.   
 
+Download the example data from [huggingface](https://huggingface.co/kelvin34501/POEM-v2_example_data/blob/main/example_data.tar.xz). 
+The tarball includes **multi-view video of manipulaiton** captured in a laboratory setting,   
+along with the corresponding camera **instrinsics and extrinsics**, hand poses, and hand's side information.
 
-###  _POEM-v2_ Use Case.
+In the file `tool/infer_hand.py`, modify the path prefix (`/prefix/data/`) to the full path of the directory where the data has been extracted.
 
-Human-to-Robot Teleoperation with a few cost-effective cameras:
-(shown in Sim).  
-<br/>
+```python
+DATA_FILEDIR = "/prefix/data/data" # Modify /prefix/data to where example data is extracted
+MASK_FILEDIR = "/prefix/data/human_mask_hand"
+CALIB_FILEDIR = "/prefix/data/calib/calib__2025_0319_1534_41"
+HAND_SIDE_FILEPATH = "/prefix/data/hand_labels.json"
+```
 
-<table width="100%" cellpadding="0" cellspacing="0">
-  <tr>
-    <td colspan="2" align="center">
-      <img src="./docs/demo_both.png" alt="both" width="100%" />
-      <p><em>Supports reconstruction of both left and right hand.</em></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="58%" align="center">
-      <img src="docs/demo_single.png" alt="demo_single" width="100%" />
-      <p><em>Absolute metric output and occlusion-robust.</em></p>
-    </td>
-    <td width="42%" align="center">
-      <img src="docs/teleop_sim.gif" alt="teleop" width="100%" />
-      <p><em>Human-to-robot teleoperation in sim.</em></p>
-    </td>
-  </tr>
-</table>
-<br/><br/>
+The visualize command (you need to install our env first)
+```bash
+python -m tool.infer_hand -c config/release/eval_single.yaml --reload ./checkpoints/medium.pth.tar -g 0
+```
+--- 
 
-## :joystick: Instructions
+## :notebook: Instructions
 
 - See [docs/installation.md](docs/installation.md) to setup the environment and install all the required packages.
 - See [docs/datasets.md](docs/datasets.md) to download all the datasets and additional assets required.
@@ -186,28 +200,6 @@ $ tensorboard --logdir .
 ### Checkpoint
 
 All the checkpoints during training are saved at `exp/${EXP_ID}_{timestamp}/checkpoints/`, where `../checkpoints/checkpoint` records the most recent checkpoint.
-
-&nbsp;
-
-### Deployment on example in-the-wild data
-
-Download the example data from [huggingface](https://huggingface.co/kelvin34501/POEM-v2_example_data/blob/main/example_data.tar.xz). 
-The tarball includes challenging multi-view image streams of hand-object interactions captured in a laboratory setting, along with the corresponding camera calibration parameters, hand poses, and hand side information.
-
-In the file `tool/infer_hand.py`, modify the path prefix (`/prefix/data/`) to the full path of the directory where the data has been extracted.
-
-```python
-DATA_FILEDIR = "/prefix/data/data" # Modify /prefix/data to where example data is extracted
-MASK_FILEDIR = "/prefix/data/human_mask_hand"
-CALIB_FILEDIR = "/prefix/data/calib/calib__2025_0319_1534_41"
-HAND_SIDE_FILEPATH = "/prefix/data/hand_labels.json"
-```
-
-The visualize command:
-
-```bash
-python -m tool.infer_hand -c config/release/eval_single.yaml --reload ./checkpoints/medium.pth.tar -g 0
-```
 
 &nbsp;
 
